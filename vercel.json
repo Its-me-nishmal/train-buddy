@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/status",
+      "dest": "/api/status.js"
+    },
+    {
+      "src": "/api/stations",
+      "dest": "/api/stations.js"
+    },
+    {
+      "src": "/api/trains-between-stations",
+      "dest": "/api/trains-between-stations.js"
+    },
+    {
+      "src": "/api/assistant",
+      "dest": "/api/assistant.js"
+    }
+  ]
+}
