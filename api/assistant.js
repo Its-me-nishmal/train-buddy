@@ -226,8 +226,8 @@ ${JSON.stringify(resolvedContext, null, 2)}
             .replace(/[^\S\r\n]+/g, ' ')
             .trim();
 
-        // 1. Convert bullet list asterisks (* ) or unicode bullets (• ) to native WhatsApp hyphen bullet format (- ) to avoid double-asterisk issues (* *train*)
-        responseText = responseText.replace(/^[ \t]*[*•][ \t]+/gm, '- ');
+        // 1. Convert bullet list asterisks (* ), dashes, or unicode bullets (\u2022) to native WhatsApp hyphen bullet format (- ) to avoid double-asterisk issues (* *train*)
+        responseText = responseText.replace(/^[ \t]*[*•\u2022\u2023\u25e6\u25cf\u2219\u203a\u25aa\u25ab\u2010-\u2015-][ \t]+/gm, '- ');
 
         // 2. Convert markdown bold (**text** or __text__) to WhatsApp bold (*text*)
         responseText = responseText.replace(/\*\*([^*]+)\*\*/g, '*$1*');
