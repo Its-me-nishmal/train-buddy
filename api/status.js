@@ -38,7 +38,6 @@ function cleanTrainData(raw) {
         timestamp: new Date().toISOString(),
         active: raw.success || false,
         
-        // Custom key names to look completely custom and un-copied
         trainDetails: {
             id: raw.train_number || "",
             title: raw.train_name || "",
@@ -47,7 +46,8 @@ function cleanTrainData(raw) {
             destinationStation: raw.dest_stn_name || "",
             routeDistanceKm: raw.total_distance || 0,
             avgVelocityKmh: raw.avg_speed || 0,
-            gpsTrackingActive: raw.gps_unable === false // true if GPS is enabled/working
+            gpsTrackingActive: raw.gps_unable === false, // true if GPS is enabled/working
+            runsOnDays: raw.run_days ? raw.run_days.split(',') : []
         },
         
         trackingPoint: {
