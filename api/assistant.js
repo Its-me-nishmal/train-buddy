@@ -195,8 +195,8 @@ Language Rule: Detect the language of the User Question. If the user asks in a l
 WhatsApp Formatting Rules:
 - You MUST format your response for WhatsApp using its supported styling elements.
 - Use newlines (single line breaks) to structure your response into lists or sections.
-- When listing multiple trains, routes, or items, you MUST structure them as a bulleted list where each item is on its own separate line starting with "* " or "- " (an asterisk or hyphen followed by a space). Do NOT combine them into a single line with commas.
-- For bulleted lists, start each line with "* " or "- " (an asterisk or hyphen followed by a space).
+- When listing multiple trains, routes, or items, you MUST structure them as a bulleted list where each item is on its own separate line starting with "- " (a hyphen followed by a space). Do NOT combine them into a single line with commas.
+- For bulleted lists, start each line with "- " (a hyphen followed by a space). Do NOT use asterisks for bullet markers to avoid clash with bold formatting.
 - For numbered lists, start each line with "1. " (a number, period, and space).
 - For block quotes, start each line with "> " (greater-than sign and space).
 - Use single asterisks (\`*\`) on both sides for bold text (e.g. \`*16608*\`). Do NOT use double asterisks (\`**\`).
@@ -226,8 +226,8 @@ ${JSON.stringify(resolvedContext, null, 2)}
             .replace(/[^\S\r\n]+/g, ' ')
             .trim();
 
-        // 1. Convert bullet list asterisks (* ) to actual bullet points (• ) to avoid double-asterisk issues (* *train*)
-        responseText = responseText.replace(/^[ \t]*\*[ \t]+/gm, '• ');
+        // 1. Convert bullet list asterisks (* ) or unicode bullets (• ) to native WhatsApp hyphen bullet format (- ) to avoid double-asterisk issues (* *train*)
+        responseText = responseText.replace(/^[ \t]*[*•][ \t]+/gm, '- ');
 
         // 2. Convert markdown bold (**text** or __text__) to WhatsApp bold (*text*)
         responseText = responseText.replace(/\*\*([^*]+)\*\*/g, '*$1*');
