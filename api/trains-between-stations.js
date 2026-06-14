@@ -91,6 +91,19 @@ export default async function handler(req, res) {
     }
 }
 
+// Convert "19:52" to "07:52 PM"
+function format24hTo12h(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/\b(\d{1,2}):(\d{2})\b/g, (match, h, m) => {
+        let hours = parseInt(h, 10);
+        if (hours > 23) return match;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${String(hours).padStart(2, '0')}:${m} ${ampm}`;
+    });
+}
+
 function cleanTbsData(raw) {
     // Combine reserved_trains and alternate_trains from RailYatri response
     const trainsList = [
@@ -117,8 +130,8 @@ function cleanTbsData(raw) {
                 trainNumber: train.train_number || "",
                 trainName: train.train_name || "",
                 duration: train.duration || "",
-                departureTime: train.from_std || train.dep_time || "",
-                arrivalTime: train.to_sta || train.arr_time || "",
+                departureTime: format24hTo12h(train.from_std || train.dep_time || ""),
+                arrivalTime: format24hTo12h(train.to_sta || train.arr_time || ""),
                 runsOnDays: train.run_days || [],
                 classesAvailable: train.class_type ? train.class_type.map(c => c.coach_type) : [],
                 seatAvailability: seats

@@ -15,6 +15,19 @@ function getRandomUserAgent() {
     return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
+// Convert "19:52" to "07:52 PM" or strings containing "19:52" to "07:52 PM"
+function format24hTo12h(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/\b(\d{1,2}):(\d{2})\b/g, (match, h, m) => {
+        let hours = parseInt(h, 10);
+        if (hours > 23) return match;
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${String(hours).padStart(2, '0')}:${m} ${ampm}`;
+    });
+}
+
 /**
  * Normalizes and cleans the raw payload using unique custom keys
  * Built by developer: Nishmal Vadakara
@@ -40,9 +53,9 @@ function cleanTrainData(raw) {
         trackingPoint: {
             station: raw.current_station_name || "",
             code: raw.current_station_code || "",
-            currentStatusText: raw.status || "",
+            currentStatusText: format24hTo12h(raw.status || ""),
             delayInMinutes: raw.delay || 0,
-            lastLoggedAt: raw.status_as_of || "",
+            lastLoggedAt: format24hTo12h(raw.status_as_of || ""),
             platformAssigned: raw.platform_number || null,
             latitude: raw.cur_stn_lat || 0,
             longitude: raw.cur_stn_lng || 0
@@ -50,7 +63,7 @@ function cleanTrainData(raw) {
         
         journeySummary: raw.bubble_message ? {
             station: raw.bubble_message.station_name,
-            update: `${raw.bubble_message.message_type} ${raw.bubble_message.station_time}`.trim()
+            update: format24hTo12h(`${raw.bubble_message.message_type} ${raw.bubble_message.station_time}`.trim())
         } : null,
         
         upcomingTarget: raw.next_stoppage_info ? {
@@ -60,8 +73,8 @@ function cleanTrainData(raw) {
         } : null,
         
         liveTimelineLogs: raw.current_location_info ? raw.current_location_info.map(info => ({
-            timestampLabel: info.label,
-            statusMessage: info.message,
+            timestampLabel: format24hTo12h(info.label),
+            statusMessage: format24hTo12h(info.message),
             indicator: info.hint
         })) : [],
 
@@ -70,10 +83,10 @@ function cleanTrainData(raw) {
             seq: st.si_no,
             stationName: st.station_name,
             stationCode: st.station_code,
-            scheduledArrival: st.sta || null,
-            scheduledDeparture: st.std || null,
-            actualArrival: st.eta || null,
-            actualDeparture: st.etd || null,
+            scheduledArrival: format24hTo12h(st.sta || null),
+            scheduledDeparture: format24hTo12h(st.std || null),
+            actualArrival: format24hTo12h(st.eta || null),
+            actualDeparture: format24hTo12h(st.etd || null),
             delayMinutes: st.arrival_delay || 0,
             platform: st.platform_number || null,
             distanceFromStartKm: st.distance_from_source || 0
@@ -83,9 +96,9 @@ function cleanTrainData(raw) {
             seq: st.si_no,
             stationName: st.station_name,
             stationCode: st.station_code,
-            scheduledArrival: st.sta || null,
-            estimatedArrival: st.eta || null,
-            estimatedDeparture: st.etd || null,
+            scheduledArrival: format24hTo12h(st.sta || null),
+            estimatedArrival: format24hTo12h(st.eta || null),
+            estimatedDeparture: format24hTo12h(st.etd || null),
             delayMinutes: st.arrival_delay || 0,
             platform: st.platform_number || null,
             distanceFromStartKm: st.distance_from_source || 0,
