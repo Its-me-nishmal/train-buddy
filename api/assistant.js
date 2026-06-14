@@ -226,11 +226,14 @@ ${JSON.stringify(resolvedContext, null, 2)}
             .replace(/[^\S\r\n]+/g, ' ')
             .trim();
 
-        // 1. Convert markdown bold (**text** or __text__) to WhatsApp bold (*text*)
+        // 1. Convert bullet list asterisks (* ) to actual bullet points (• ) to avoid double-asterisk issues (* *train*)
+        responseText = responseText.replace(/^[ \t]*\*[ \t]+/gm, '• ');
+
+        // 2. Convert markdown bold (**text** or __text__) to WhatsApp bold (*text*)
         responseText = responseText.replace(/\*\*([^*]+)\*\*/g, '*$1*');
         responseText = responseText.replace(/__([^_]+)__/g, '*$1*');
 
-        // 2. Convert markdown strikethrough (~~text~~) to WhatsApp strikethrough (~text~)
+        // 3. Convert markdown strikethrough (~~text~~) to WhatsApp strikethrough (~text~)
         responseText = responseText.replace(/~~([^~]+)~~/g, '~$1~');
 
         res.setHeader('X-Powered-By', 'Train Buddy AI Engine (Created by Nishmal Vadakara)');
