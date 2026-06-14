@@ -71,6 +71,14 @@ export default async function handler(req, res) {
     const host = req.headers.host || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
 
+    // Calculate current dynamic IST date for relative date resolution in Step 1
+    const todayIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const todayStr = `${todayIST.getDate()}-${todayIST.getMonth() + 1}-${todayIST.getFullYear()}`;
+    
+    const tomorrowIST = new Date(todayIST);
+    tomorrowIST.setDate(todayIST.getDate() + 1);
+    const tomorrowStr = `${tomorrowIST.getDate()}-${tomorrowIST.getMonth() + 1}-${tomorrowIST.getFullYear()}`;
+
     let resolvedContext = {};
     let resolutionSteps = [];
 
@@ -86,12 +94,19 @@ Analyze the user prompt and extract Indian Railways parameters. Return ONLY a va
 }
 Do not write markdown, code blocks, or explanations. Only return the raw JSON text.
 
+Reference Current Date/Time in India (IST): ${new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })}
+Reference Date Mapping: Today is ${todayStr}, Tomorrow is ${tomorrowStr}.
+If the user specifies a relative date (like "today", "tomorrow", "day after tomorrow", "next Monday", or a day of the week), resolve it to the exact date in "D-M-YYYY" format based on the current IST date.
+
 Examples:
 Prompt: "where is train 16608 right now?"
 Response: {"trainNumber": "16608", "fromStationQuery": null, "toStationQuery": null, "dateQuery": null}
 
-Prompt: "Suggest trains from vadakara to kozhikode on 15 June"
-Response: {"trainNumber": null, "fromStationQuery": "vadakara", "toStationQuery": "kozhikode", "dateQuery": "15-6-2026"}
+Prompt: "Suggest trains from vadakara to kozhikode on 18 June"
+Response: {"trainNumber": null, "fromStationQuery": "vadakara", "toStationQuery": "kozhikode", "dateQuery": "18-6-2026"}
+
+Prompt: "trains between clt and can tomorrow"
+Response: {"trainNumber": null, "fromStationQuery": "clt", "toStationQuery": "can", "dateQuery": "${tomorrowStr}"}
 `;
 
         const intentResult = await queryGemini([
@@ -143,12 +158,8 @@ Response: {"trainNumber": null, "fromStationQuery": "vadakara", "toStationQuery"
 
         // 2b. If both station codes resolved, query trains between them
         if (fromCode && toCode) {
-            // Determine a travel date: default to today (14-06-2026)
-            let dateParam = intent.dateQuery || "14-6-2026";
-            // Simple parsing of words like "tomorrow" to make it friendly
-            if (dateParam.toLowerCase() === "tomorrow") {
-                dateParam = "15-6-2026";
-            }
+            // Determine travel date: default to today dynamically
+            let dateParam = intent.dateQuery || todayStr;
             
             const resTbs = await fetch(`${baseUrl}/api/trains-between-stations?from=${fromCode}&to=${toCode}&date=${dateParam}`);
             if (resTbs.ok) {
