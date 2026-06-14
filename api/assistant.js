@@ -88,6 +88,7 @@ export default async function handler(req, res) {
 Analyze the user prompt and extract Indian Railways parameters. Return ONLY a valid JSON object matching the following structure:
 {
   "trainNumber": string or null,
+  "trainQuery": string or null,
   "fromStationQuery": string or null,
   "toStationQuery": string or null,
   "dateQuery": string or null
@@ -100,13 +101,16 @@ If the user specifies a relative date (like "today", "tomorrow", "day after tomo
 
 Examples:
 Prompt: "where is train 16608 right now?"
-Response: {"trainNumber": "16608", "fromStationQuery": null, "toStationQuery": null, "dateQuery": null}
+Response: {"trainNumber": "16608", "trainQuery": null, "fromStationQuery": null, "toStationQuery": null, "dateQuery": null}
+
+Prompt: "where is Okha - Ernakulam Express?"
+Response: {"trainNumber": null, "trainQuery": "Okha - Ernakulam Express", "fromStationQuery": null, "toStationQuery": null, "dateQuery": null}
 
 Prompt: "Suggest trains from vadakara to kozhikode on 18 June"
-Response: {"trainNumber": null, "fromStationQuery": "vadakara", "toStationQuery": "kozhikode", "dateQuery": "18-6-2026"}
+Response: {"trainNumber": null, "trainQuery": null, "fromStationQuery": "vadakara", "toStationQuery": "kozhikode", "dateQuery": "18-6-2026"}
 
 Prompt: "trains between clt and can tomorrow"
-Response: {"trainNumber": null, "fromStationQuery": "clt", "toStationQuery": "can", "dateQuery": "${tomorrowStr}"}
+Response: {"trainNumber": null, "trainQuery": null, "fromStationQuery": "clt", "toStationQuery": "can", "dateQuery": "${tomorrowStr}"}
 `;
 
         const intentResult = await queryGemini([
@@ -156,7 +160,25 @@ Response: {"trainNumber": null, "fromStationQuery": "clt", "toStationQuery": "ca
             }
         }
 
-        // 2b. If both station codes resolved, query trains between them
+        // 2b. Resolve Train Query if trainNumber is not a 5-digit number
+        let resolvedTrainNumber = intent.trainNumber;
+        if (!resolvedTrainNumber && intent.trainQuery) {
+            try {
+                const searchRes = await fetch(`https://search.railyatri.in/v2/mobile/trainsearch.json?q=${encodeURIComponent(intent.trainQuery)}&user_id=-178137273&temp_user_id=-178137273`);
+                if (searchRes.ok) {
+                    const searchData = await searchRes.json();
+                    if (searchData.success && searchData.trains && searchData.trains.length > 0) {
+                        resolvedTrainNumber = searchData.trains[0].train_number;
+                        resolvedContext.searchedTrainDetails = searchData.trains[0];
+                        resolutionSteps.push({ phase: "Train Search Resolved", query: intent.trainQuery, resolvedNumber: resolvedTrainNumber });
+                    }
+                }
+            } catch (e) {
+                console.error("Train Search API error:", e.message);
+            }
+        }
+
+        // 2c. If both station codes resolved, query trains between them
         if (fromCode && toCode) {
             // Determine travel date: default to today dynamically
             let dateParam = intent.dateQuery || todayStr;
@@ -168,12 +190,12 @@ Response: {"trainNumber": null, "fromStationQuery": "clt", "toStationQuery": "ca
             }
         }
 
-        // 2c. If train number is present, fetch live status
-        if (intent.trainNumber) {
-            const resStatus = await fetch(`${baseUrl}/api/status?train=${intent.trainNumber}`);
+        // 2d. If train number is resolved, fetch live status
+        if (resolvedTrainNumber) {
+            const resStatus = await fetch(`${baseUrl}/api/status?train=${resolvedTrainNumber}`);
             if (resStatus.ok) {
                 resolvedContext.liveStatus = await resStatus.json();
-                resolutionSteps.push({ phase: "Live Status Fetched", train: intent.trainNumber });
+                resolutionSteps.push({ phase: "Live Status Fetched", train: resolvedTrainNumber });
             }
         }
     } catch (e) {
