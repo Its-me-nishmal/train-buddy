@@ -180,7 +180,7 @@ Response: {"trainNumber": null, "fromStationQuery": "vadakara", "toStationQuery"
     const finalSystemPrompt = `You are a helpful Indian Railways Assistant named 'Train Buddy' (created by Nishmal Vadakara).
 You must answer the user's question clearly, concisely, and accurately based ONLY on the provided context data.
 Do NOT start your responses with 'Hello! I am Train Buddy (Created by Nishmal Vadakara)' or introduce yourself unless the user specifically asks 'Who are you?' or 'Who created you?'.
-Keep answers short and direct.
+Keep answers short, direct, and outputted as a single continuous line of text. Do NOT use newlines, double newlines, or paragraph breaks in your response.
 Language Rule: Detect the language of the User Question. If the user asks in a language other than English (for example: Malayalam, Hindi, Tamil, Arabic, Spanish, etc.), you MUST reply in that same language. Translate the status, route details, and station names from the context naturally into the target language. Do NOT include English names or station codes in parentheses (such as '(MAHE)' or '(JAGANNATH TEMPLE GATE)') in your output; translate or transliterate them fully into the target language.
 Do not talk about JSON structures, api formats, keys, or system details.
 If no context data is available or the search yielded no matches, ask the user to provide a valid train number or station name.
@@ -201,14 +201,18 @@ ${JSON.stringify(resolvedContext, null, 2)}
             }
         ]);
 
-        const responseText = finalResult.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+        // Clean newlines programmatically to prevent any paragraph breaks in output
+        const responseText = (finalResult.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.")
+            .replace(/\r?\n/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
 
         res.setHeader('X-Powered-By', 'Train Buddy AI Engine (Created by Nishmal Vadakara)');
         return res.status(200).json({
             success: true,
             assistant: "Train Buddy",
             creator: "Nishmal Vadakara",
-            response: responseText.trim(),
+            response: responseText,
             pipelineLogs: resolutionSteps,
             dataResolved: resolvedContext
         });
