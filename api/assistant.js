@@ -81,6 +81,7 @@ export default async function handler(req, res) {
 
     let resolvedContext = {};
     let resolutionSteps = [];
+    let resolvedTrainNumber = null;
 
     try {
         // --- STEP 1: Intent Extraction using Gemini ---
@@ -161,7 +162,7 @@ Response: {"trainNumber": null, "trainQuery": null, "fromStationQuery": "clt", "
         }
 
         // 2b. Resolve Train Query if trainNumber is not a 5-digit number
-        let resolvedTrainNumber = intent.trainNumber || train;
+        resolvedTrainNumber = intent.trainNumber || train;
         if (!resolvedTrainNumber && intent.trainQuery) {
             try {
                 async function querySearch(q) {
