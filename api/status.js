@@ -47,7 +47,12 @@ function cleanTrainData(raw) {
             routeDistanceKm: raw.total_distance || 0,
             avgVelocityKmh: raw.avg_speed || 0,
             gpsTrackingActive: raw.gps_unable === false, // true if GPS is enabled/working
-            runsOnDays: raw.run_days ? raw.run_days.split(',') : []
+            runsOnDays: raw.run_days ? raw.run_days.split(',') : [],
+            pantryAvailable: raw.pantry_available || false,
+            journeyTimeMinutes: raw.journey_time || null,
+            dataFrom: raw.data_from || "",
+            divertedStations: raw.diverted_stations || null,
+            criticalAlert: raw.new_alert_msg || ""
         },
         
         trackingPoint: {
