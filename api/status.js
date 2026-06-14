@@ -94,7 +94,10 @@ function cleanTrainData(raw) {
             actualDeparture: format24hTo12h(st.etd || null),
             delayMinutes: st.arrival_delay || 0,
             platform: st.platform_number || null,
-            distanceFromStartKm: st.distance_from_source || 0
+            distanceFromStartKm: st.distance_from_source || 0,
+            haltMinutes: st.halt || 0,
+            foodAvailable: st.food_available || false,
+            isDiverted: st.is_diverted_station || false
         })) : [],
         
         remainingStops: raw.upcoming_stations ? raw.upcoming_stations.map(st => ({
@@ -107,7 +110,10 @@ function cleanTrainData(raw) {
             delayMinutes: st.arrival_delay || 0,
             platform: st.platform_number || null,
             distanceFromStartKm: st.distance_from_source || 0,
-            distanceFromCurrentKm: st.distance_from_current_station || 0
+            distanceFromCurrentKm: st.distance_from_current_station || 0,
+            haltMinutes: st.halt || 0,
+            foodAvailable: st.food_available || false,
+            isDiverted: st.is_diverted_station || false
         })) : []
     };
 }
