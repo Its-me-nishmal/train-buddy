@@ -1,0 +1,12 @@
+{
+  "name": "train-status-api",
+  "version": "1.0.0",
+  "description": "High-performance Serverless API to fetch Indian Railways live train status with caching, user-agent rotation, and clean JSON payloads.",
+  "main": "api/status.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "node --env-file=.env server.js"
+  },
+  "dependencies": {}
+}
