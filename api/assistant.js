@@ -164,14 +164,47 @@ Response: {"trainNumber": null, "trainQuery": null, "fromStationQuery": "clt", "
         let resolvedTrainNumber = intent.trainNumber;
         if (!resolvedTrainNumber && intent.trainQuery) {
             try {
-                const searchRes = await fetch(`https://search.railyatri.in/v2/mobile/trainsearch.json?q=${encodeURIComponent(intent.trainQuery)}&user_id=-178137273&temp_user_id=-178137273`);
-                if (searchRes.ok) {
-                    const searchData = await searchRes.json();
-                    if (searchData.success && searchData.trains && searchData.trains.length > 0) {
-                        resolvedTrainNumber = searchData.trains[0].train_number;
-                        resolvedContext.searchedTrainDetails = searchData.trains[0];
-                        resolutionSteps.push({ phase: "Train Search Resolved", query: intent.trainQuery, resolvedNumber: resolvedTrainNumber });
+                async function querySearch(q) {
+                    const url = `https://search.railyatri.in/v2/mobile/trainsearch.json?q=${encodeURIComponent(q)}&user_id=-178137273&temp_user_id=-178137273`;
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.trains && data.trains.length > 0) {
+                            return data.trains;
+                        }
                     }
+                    return null;
+                }
+
+                let searchResults = await querySearch(intent.trainQuery);
+                let cleanedQuery = intent.trainQuery
+                    .replace(/\b(express|superfast|sf|passenger|mail|special|train|unreserved|exp|pass)\b/gi, '')
+                    .replace(/[^a-zA-Z0-9\s-]/g, '')
+                    .trim();
+
+                if (!searchResults && cleanedQuery && cleanedQuery !== intent.trainQuery) {
+                    searchResults = await querySearch(cleanedQuery);
+                }
+
+                let parts = cleanedQuery.split(/[-]|to/gi).map(p => p.trim()).filter(p => p.length > 0);
+                if (!searchResults && parts.length > 0) {
+                    searchResults = await querySearch(parts[0]);
+                }
+
+                if (searchResults && searchResults.length > 0) {
+                    let bestMatch = searchResults[0];
+                    if (searchResults.length > 1 && parts.length > 0) {
+                        const matched = searchResults.find(t => {
+                            const lowerName = t.train_name.toLowerCase();
+                            return parts.every(part => lowerName.includes(part.toLowerCase()));
+                        });
+                        if (matched) {
+                            bestMatch = matched;
+                        }
+                    }
+                    resolvedTrainNumber = bestMatch.train_number;
+                    resolvedContext.searchedTrainDetails = bestMatch;
+                    resolutionSteps.push({ phase: "Train Search Resolved", query: intent.trainQuery, resolvedNumber: resolvedTrainNumber });
                 }
             } catch (e) {
                 console.error("Train Search API error:", e.message);
@@ -213,7 +246,7 @@ Response: {"trainNumber": null, "trainQuery": null, "fromStationQuery": "clt", "
     const finalSystemPrompt = `You are a helpful Indian Railways Assistant named 'Train Buddy' (created by Nishmal Vadakara).
 You must answer the user's question clearly, concisely, and accurately based ONLY on the provided context data.
 Do NOT start your responses with 'Hello! I am Train Buddy (Created by Nishmal Vadakara)' or introduce yourself unless the user specifically asks 'Who are you?' or 'Who created you?'.
-Language Rule: Detect the language of the User Question. If the user asks in a language other than English (for example: Malayalam, Hindi, Tamil, Arabic, Spanish, etc.), you MUST reply in that same language. Translate the status, route details, and station names from the context naturally into the target language. Do NOT include English names or station codes in parentheses (such as '(MAHE)' or '(JAGANNATH TEMPLE GATE)') in your output; translate or transliterate them fully into the target language.
+Language Rule: By default, you MUST reply in English. If the user writes in English, Manglish (Malayalam in English script), or any ambiguous/mix/unspecified language, you MUST reply in English. Only reply in a non-English language (such as native Malayalam, Hindi, Tamil, etc.) if they explicitly write in that native non-English script (e.g., മലയാളം script, हिंदी script, etc.). Translate the status, route details, and station names from the context naturally. Do NOT include English names or station codes in parentheses (such as '(MAHE)') in non-English output; translate or transliterate them fully.
 WhatsApp Formatting Rules:
 - You MUST format your response for WhatsApp using its supported styling elements.
 - Use newlines (single line breaks) to structure your response into lists or sections.
