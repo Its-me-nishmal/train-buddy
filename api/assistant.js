@@ -252,6 +252,7 @@ Language Rule: Detect the language of the User Question.
 - If the user writes in any other language (Hindi, Tamil, Spanish, etc.), reply in that language.
 - By default, if the language is English or unspecified, reply in English.
 Translate the status, route details, and station names from the context naturally into the target language. Do NOT include English names or station codes in parentheses (such as '(MAHE)') in non-English output; translate or transliterate them fully.
+- Future Date Rule: If the user's query is about tomorrow or a future date, you MUST report the scheduled arrival/departure times (e.g., "scheduledArrival" / "scheduledDeparture") from the station list in the context, NOT today's actual/delayed arrival/departure times (e.g., "actualArrival" / "actualDeparture"). Explicitly state that these are scheduled times for tomorrow/that future date.
 WhatsApp Formatting Rules:
 - You MUST format your response for WhatsApp using its supported styling elements.
 - Use newlines (single line breaks) to structure your response into lists or sections.
