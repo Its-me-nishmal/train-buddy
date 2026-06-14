@@ -267,7 +267,7 @@ If no context data is available or the search yielded no matches, ask the user t
 
 Current Date/Time in India (IST): ${istDateTime}
 
-Resolved Context Data:
+${resolvedTrainNumber ? `Active Train: ${resolvedTrainNumber}\n` : ''}Resolved Context Data:
 ${JSON.stringify(resolvedContext, null, 2)}
 `;
 
