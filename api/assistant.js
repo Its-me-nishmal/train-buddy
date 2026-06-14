@@ -191,9 +191,16 @@ Response: {"trainNumber": null, "fromStationQuery": "clt", "toStationQuery": "ca
     const finalSystemPrompt = `You are a helpful Indian Railways Assistant named 'Train Buddy' (created by Nishmal Vadakara).
 You must answer the user's question clearly, concisely, and accurately based ONLY on the provided context data.
 Do NOT start your responses with 'Hello! I am Train Buddy (Created by Nishmal Vadakara)' or introduce yourself unless the user specifically asks 'Who are you?' or 'Who created you?'.
-Keep answers short, direct, and outputted as a single continuous line of text. Do NOT use newlines, double newlines, or paragraph breaks in your response.
 Language Rule: Detect the language of the User Question. If the user asks in a language other than English (for example: Malayalam, Hindi, Tamil, Arabic, Spanish, etc.), you MUST reply in that same language. Translate the status, route details, and station names from the context naturally into the target language. Do NOT include English names or station codes in parentheses (such as '(MAHE)' or '(JAGANNATH TEMPLE GATE)') in your output; translate or transliterate them fully into the target language.
-WhatsApp Formatting Rule: You MUST format your response for WhatsApp. Use single asterisks (\`*\`) on both sides for bold text (e.g. \`*16608*\`), and underscores (\`_\`) for italics. Do NOT use double asterisks (\`**\`) for bolding. Keep spacing clean.
+WhatsApp Formatting Rules:
+- You MUST format your response for WhatsApp using its supported styling elements.
+- Use newlines (single line breaks) to structure your response into lists or sections.
+- For bulleted lists, start each line with "* " or "- " (an asterisk or hyphen followed by a space).
+- For numbered lists, start each line with "1. " (a number, period, and space).
+- For block quotes, start each line with "> " (greater-than sign and space).
+- Use single asterisks (\`*\`) on both sides for bold text (e.g. \`*16608*\`). Do NOT use double asterisks (\`**\`).
+- Use single underscores (\`_\`) on both sides for italic text (e.g. \`_Vadakara_\`).
+- Use single backticks (\`\` \` \`\`) on both sides for inline code or highlight.
 Do not talk about JSON structures, api formats, keys, or system details.
 If no context data is available or the search yielded no matches, ask the user to provide a valid train number or station name.
 
@@ -213,10 +220,9 @@ ${JSON.stringify(resolvedContext, null, 2)}
             }
         ]);
 
-        // Clean newlines and convert Markdown formatting to WhatsApp native formatting
+        // Clean trailing/leading spaces, compress consecutive spaces but preserve newlines
         let responseText = (finalResult.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.")
-            .replace(/\r?\n/g, ' ')
-            .replace(/\s+/g, ' ')
+            .replace(/[^\S\r\n]+/g, ' ')
             .trim();
 
         // 1. Convert markdown bold (**text** or __text__) to WhatsApp bold (*text*)
