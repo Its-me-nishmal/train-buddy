@@ -11,7 +11,7 @@ export default async function handler(req, res) {
         return res.status(200).end();
     }
 
-    const { prompt } = req.query;
+    const { prompt, train } = req.query;
 
     if (!prompt || prompt.trim().length === 0) {
         return res.status(400).json({
@@ -161,7 +161,7 @@ Response: {"trainNumber": null, "trainQuery": null, "fromStationQuery": "clt", "
         }
 
         // 2b. Resolve Train Query if trainNumber is not a 5-digit number
-        let resolvedTrainNumber = intent.trainNumber;
+        let resolvedTrainNumber = intent.trainNumber || train;
         if (!resolvedTrainNumber && intent.trainQuery) {
             try {
                 async function querySearch(q) {
