@@ -213,12 +213,18 @@ ${JSON.stringify(resolvedContext, null, 2)}
             }
         ]);
 
-        // Clean newlines and convert any remaining markdown bold (**) to WhatsApp bold (*)
-        const responseText = (finalResult.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.")
+        // Clean newlines and convert Markdown formatting to WhatsApp native formatting
+        let responseText = (finalResult.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.")
             .replace(/\r?\n/g, ' ')
             .replace(/\s+/g, ' ')
-            .replace(/\*\*/g, '*')
             .trim();
+
+        // 1. Convert markdown bold (**text** or __text__) to WhatsApp bold (*text*)
+        responseText = responseText.replace(/\*\*([^*]+)\*\*/g, '*$1*');
+        responseText = responseText.replace(/__([^_]+)__/g, '*$1*');
+
+        // 2. Convert markdown strikethrough (~~text~~) to WhatsApp strikethrough (~text~)
+        responseText = responseText.replace(/~~([^~]+)~~/g, '~$1~');
 
         res.setHeader('X-Powered-By', 'Train Buddy AI Engine (Created by Nishmal Vadakara)');
         return res.status(200).json({
