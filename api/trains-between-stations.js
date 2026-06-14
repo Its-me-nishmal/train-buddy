@@ -134,6 +134,11 @@ function cleanTbsData(raw) {
                 arrivalTime: format24hTo12h(train.to_sta || train.arr_time || ""),
                 runsOnDays: train.run_days || [],
                 classesAvailable: train.class_type ? train.class_type.map(c => c.coach_type) : [],
+                coachConfiguration: train.class_type ? train.class_type.map(c => ({
+                    classCode: c.coach_type || "",
+                    className: c.coach_name || "",
+                    coachCount: c.coach_count || 0
+                })) : [],
                 seatAvailability: seats,
                 hasPantry: train.has_pantry || false,
                 onTimeRating: train.on_time_rating || null,
