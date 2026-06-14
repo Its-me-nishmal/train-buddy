@@ -208,7 +208,6 @@ ${JSON.stringify(resolvedContext, null, 2)}
             success: true,
             assistant: "Train Buddy",
             creator: "Nishmal Vadakara",
-            modelUsed: model,
             response: responseText.trim(),
             pipelineLogs: resolutionSteps,
             dataResolved: resolvedContext
