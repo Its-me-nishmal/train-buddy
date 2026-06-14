@@ -4,6 +4,7 @@ import statusHandler from './api/status.js';
 import stationsHandler from './api/stations.js';
 import trainsBetweenStationsHandler from './api/trains-between-stations.js';
 import assistantHandler from './api/assistant.js';
+import healthHandler from './api/health.js';
 
 const PORT = 3000;
 
@@ -34,12 +35,14 @@ const server = http.createServer(async (req, res) => {
             await trainsBetweenStationsHandler(req, res);
         } else if (parsedUrl.pathname === '/api/assistant') {
             await assistantHandler(req, res);
+        } else if (parsedUrl.pathname === '/api/health' || parsedUrl.pathname === '/') {
+            await healthHandler(req, res);
         } else {
             res.statusCode = 404;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ 
                 success: false, 
-                error: 'Route not found. Supported endpoints: /api/status, /api/stations, /api/trains-between-stations, /api/assistant' 
+                error: 'Route not found. Supported endpoints: /, /api/status, /api/stations, /api/trains-between-stations, /api/assistant' 
             }));
         }
     } catch (error) {

@@ -22,6 +22,14 @@
     {
       "src": "/api/assistant",
       "dest": "/api/assistant.js"
+    },
+    {
+      "src": "/api/health",
+      "dest": "/api/health.js"
+    },
+    {
+      "src": "/",
+      "dest": "/api/health.js"
     }
   ]
 }
