@@ -20,16 +20,53 @@ export default async function handler(req, res) {
         });
     }
 
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY) {
+    const keysString = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "";
+    const geminiKeys = keysString
+        .split(",")
+        .map(k => k.trim())
+        .filter(k => k.length > 0);
+
+    if (geminiKeys.length === 0) {
         return res.status(500).json({
             success: false,
-            error: "Gemini API key is not configured. Please set the GEMINI_API_KEY environment variable."
+            error: "Gemini API key is not configured. Please set GEMINI_API_KEY or GEMINI_API_KEYS."
         });
     }
 
     const model = "gemini-3.1-flash-lite";
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+
+    // Helper to query Gemini with rotation and retries
+    async function queryGemini(contents) {
+        const shuffledKeys = [...geminiKeys].sort(() => Math.random() - 0.5);
+        let lastError = null;
+
+        for (let i = 0; i < shuffledKeys.length; i++) {
+            const currentKey = shuffledKeys[i];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents })
+                });
+
+                if (response.ok) {
+                    return await response.json();
+                }
+
+                const errText = await response.text();
+                console.warn(`Gemini API Key failure (key index ${i}): Status ${response.status} - ${errText}`);
+                lastError = new Error(`Status ${response.status}: ${errText}`);
+            } catch (error) {
+                console.warn(`Gemini API Key failure (key index ${i}) connection error: ${error.message}`);
+                lastError = error;
+            }
+        }
+
+        throw new Error(`All Gemini API keys failed. Last error: ${lastError.message}`);
+    }
+
     const protocol = req.headers['x-forwarded-proto'] || 'http';
     const host = req.headers.host || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
@@ -57,84 +94,75 @@ Prompt: "Suggest trains from vadakara to kozhikode on 15 June"
 Response: {"trainNumber": null, "fromStationQuery": "vadakara", "toStationQuery": "kozhikode", "dateQuery": "15-6-2026"}
 `;
 
-        const intentResponse = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            { text: intentPrompt },
-                            { text: `User Prompt: "${prompt}"` }
-                        ]
-                    }
+        const intentResult = await queryGemini([
+            {
+                parts: [
+                    { text: intentPrompt },
+                    { text: `User Prompt: "${prompt}"` }
                 ]
-            })
-        });
+            }
+        ]);
 
-        if (intentResponse.ok) {
-            const intentResult = await intentResponse.json();
-            let intentText = intentResult.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        let intentText = intentResult.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        
+        // Clean markdown blocks if returned
+        intentText = intentText.replace(/```json/g, '').replace(/```/g, '').trim();
+        const intent = JSON.parse(intentText);
+
+        resolutionSteps.push({ phase: "Intent Extraction", result: intent });
+
+        // --- STEP 2: Context Resolution (Station codes / Live Status) ---
+        
+        // 2a. Resolve Station Queries to Station Codes if present
+        let fromCode = null;
+        let toCode = null;
+
+        if (intent.fromStationQuery) {
+            const resFrom = await fetch(`${baseUrl}/api/stations?query=${encodeURIComponent(intent.fromStationQuery)}`);
+            if (resFrom.ok) {
+                const dataFrom = await resFrom.json();
+                if (dataFrom.matches && dataFrom.matches.length > 0) {
+                    fromCode = dataFrom.matches[0].code;
+                    resolvedContext.fromStation = dataFrom.matches[0];
+                    resolutionSteps.push({ phase: "From Station Resolved", code: fromCode, query: intent.fromStationQuery });
+                }
+            }
+        }
+
+        if (intent.toStationQuery) {
+            const resTo = await fetch(`${baseUrl}/api/stations?query=${encodeURIComponent(intent.toStationQuery)}`);
+            if (resTo.ok) {
+                const dataTo = await resTo.json();
+                if (dataTo.matches && dataTo.matches.length > 0) {
+                    toCode = dataTo.matches[0].code;
+                    resolvedContext.toStation = dataTo.matches[0];
+                    resolutionSteps.push({ phase: "To Station Resolved", code: toCode, query: intent.toStationQuery });
+                }
+            }
+        }
+
+        // 2b. If both station codes resolved, query trains between them
+        if (fromCode && toCode) {
+            // Determine a travel date: default to today (14-06-2026)
+            let dateParam = intent.dateQuery || "14-6-2026";
+            // Simple parsing of words like "tomorrow" to make it friendly
+            if (dateParam.toLowerCase() === "tomorrow") {
+                dateParam = "15-6-2026";
+            }
             
-            // Clean markdown blocks if returned
-            intentText = intentText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const intent = JSON.parse(intentText);
-
-            resolutionSteps.push({ phase: "Intent Extraction", result: intent });
-
-            // --- STEP 2: Context Resolution (Station codes / Live Status) ---
-            
-            // 2a. Resolve Station Queries to Station Codes if present
-            let fromCode = null;
-            let toCode = null;
-
-            if (intent.fromStationQuery) {
-                const resFrom = await fetch(`${baseUrl}/api/stations?query=${encodeURIComponent(intent.fromStationQuery)}`);
-                if (resFrom.ok) {
-                    const dataFrom = await resFrom.json();
-                    if (dataFrom.matches && dataFrom.matches.length > 0) {
-                        fromCode = dataFrom.matches[0].code;
-                        resolvedContext.fromStation = dataFrom.matches[0];
-                        resolutionSteps.push({ phase: "From Station Resolved", code: fromCode, query: intent.fromStationQuery });
-                    }
-                }
+            const resTbs = await fetch(`${baseUrl}/api/trains-between-stations?from=${fromCode}&to=${toCode}&date=${dateParam}`);
+            if (resTbs.ok) {
+                resolvedContext.trainsBetweenStations = await resTbs.json();
+                resolutionSteps.push({ phase: "Trains Between Stations Fetched", from: fromCode, to: toCode, date: dateParam });
             }
+        }
 
-            if (intent.toStationQuery) {
-                const resTo = await fetch(`${baseUrl}/api/stations?query=${encodeURIComponent(intent.toStationQuery)}`);
-                if (resTo.ok) {
-                    const dataTo = await resTo.json();
-                    if (dataTo.matches && dataTo.matches.length > 0) {
-                        toCode = dataTo.matches[0].code;
-                        resolvedContext.toStation = dataTo.matches[0];
-                        resolutionSteps.push({ phase: "To Station Resolved", code: toCode, query: intent.toStationQuery });
-                    }
-                }
-            }
-
-            // 2b. If both station codes resolved, query trains between them
-            if (fromCode && toCode) {
-                // Determine a travel date: default to today (14-06-2026)
-                let dateParam = intent.dateQuery || "14-6-2026";
-                // Simple parsing of words like "tomorrow" to make it friendly
-                if (dateParam.toLowerCase() === "tomorrow") {
-                    dateParam = "15-6-2026";
-                }
-                
-                const resTbs = await fetch(`${baseUrl}/api/trains-between-stations?from=${fromCode}&to=${toCode}&date=${dateParam}`);
-                if (resTbs.ok) {
-                    resolvedContext.trainsBetweenStations = await resTbs.json();
-                    resolutionSteps.push({ phase: "Trains Between Stations Fetched", from: fromCode, to: toCode, date: dateParam });
-                }
-            }
-
-            // 2c. If train number is present, fetch live status
-            if (intent.trainNumber) {
-                const resStatus = await fetch(`${baseUrl}/api/status?train=${intent.trainNumber}`);
-                if (resStatus.ok) {
-                    resolvedContext.liveStatus = await resStatus.json();
-                    resolutionSteps.push({ phase: "Live Status Fetched", train: intent.trainNumber });
-                }
+        // 2c. If train number is present, fetch live status
+        if (intent.trainNumber) {
+            const resStatus = await fetch(`${baseUrl}/api/status?train=${intent.trainNumber}`);
+            if (resStatus.ok) {
+                resolvedContext.liveStatus = await resStatus.json();
+                resolutionSteps.push({ phase: "Live Status Fetched", train: intent.trainNumber });
             }
         }
     } catch (e) {
@@ -164,30 +192,15 @@ ${JSON.stringify(resolvedContext, null, 2)}
 `;
 
     try {
-        const finalResponse = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            { text: finalSystemPrompt },
-                            { text: `User Question: ${prompt}` }
-                        ]
-                    }
+        const finalResult = await queryGemini([
+            {
+                parts: [
+                    { text: finalSystemPrompt },
+                    { text: `User Question: ${prompt}` }
                 ]
-            })
-        });
+            }
+        ]);
 
-        if (!finalResponse.ok) {
-            const errText = await finalResponse.text();
-            return res.status(finalResponse.status).json({
-                success: false,
-                error: `Gemini final completion failed: ${errText}`
-            });
-        }
-
-        const finalResult = await finalResponse.json();
         const responseText = finalResult.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 
         res.setHeader('X-Powered-By', 'Train Buddy AI Engine (Created by Nishmal Vadakara)');
@@ -204,7 +217,7 @@ ${JSON.stringify(resolvedContext, null, 2)}
     } catch (error) {
         return res.status(500).json({
             success: false,
-            error: `Failed to generate final response: ${error.message}`
+            error: `Failed to generate response: ${error.message}`
         });
     }
 }
