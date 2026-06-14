@@ -195,6 +195,7 @@ Language Rule: Detect the language of the User Question. If the user asks in a l
 WhatsApp Formatting Rules:
 - You MUST format your response for WhatsApp using its supported styling elements.
 - Use newlines (single line breaks) to structure your response into lists or sections.
+- When listing multiple trains, routes, or items, you MUST structure them as a bulleted list where each item is on its own separate line starting with "* " or "- " (an asterisk or hyphen followed by a space). Do NOT combine them into a single line with commas.
 - For bulleted lists, start each line with "* " or "- " (an asterisk or hyphen followed by a space).
 - For numbered lists, start each line with "1. " (a number, period, and space).
 - For block quotes, start each line with "> " (greater-than sign and space).
